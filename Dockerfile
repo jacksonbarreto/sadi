@@ -18,7 +18,7 @@ WORKDIR /app/cmd/sadi
 RUN go build -ldflags="-w -s" -o app ./main.go
 
 # Stage 2: running the application
-FROM alpine:latest
+FROM alpine:3.19
 
 # Add a non-root user
 RUN adduser -D sadi
