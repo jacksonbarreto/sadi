@@ -1,46 +1,44 @@
 package consumer
 
-import "github.com/IBM/sarama"
+import (
+	"github.com/IBM/sarama"
+	config "github.com/jacksonbarreto/sadi/config"
+)
 
 type Consumer struct {
 	consumerGroup sarama.ConsumerGroup
+	topics        []string
 }
 
-func NewConsumer(config *sarama.Config, brokerList []string, groupID string) (*Consumer, error) {
-	consumerGroup, err := sarama.NewConsumerGroup(brokerList, groupID, config)
-	if err != nil {
-		return nil, err
-	}
-	return &Consumer{consumerGroup: consumerGroup}, nil
-}
+func NewConsumer(brokers []string, group string, topics []string) (*Consumer, error) {
+	configConsumerGroup := sarama.NewConfig()
+	configConsumerGroup.Version = sarama.V2_0_0_0
+	configConsumerGroup.Consumer.Return.Errors = true
+	configConsumerGroup.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-func NewConsumer(brokers []string, group string) (*Consumer, error) {
-	config := sarama.NewConfig()
-	config.Version = sarama.V2_0_0_0
-	config.Consumer.Return.Errors = true
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	consumer, err := sarama.NewConsumerGroup(brokers, group, config)
+	consumer, err := sarama.NewConsumerGroup(brokers, group, configConsumerGroup)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Consumer{consumerGroup: consumer}, nil
+	return &Consumer{consumerGroup: consumer, topics: topics}, nil
 }
 
 func NewConsumerDefault() (*Consumer, error) {
-	// Aqui, você obtém as configurações necessárias do seu serviço de configuração
-	config, brokerList, groupID := GetKafkaConfigFromService()
+	kafkaConfig := config.Kafka()
+	brokerList := kafkaConfig.Brokers
+	groupID := kafkaConfig.GroupID
+	topics := kafkaConfig.Topics
 
-	return NewConsumer(config, brokerList, groupID)
+	return NewConsumer(brokerList, groupID, topics)
 }
 
-func (c *Consumer) Consume(topics []string) error {
+func (c *Consumer) Consume() error {
 	handler := &ConsumerGroupHandler{}
 	ctx := context.Background()
 
 	for {
-		err := c.consumerGroup.Consume(ctx, topics, handler)
+		err := c.consumerGroup.Consume(ctx, c.topics, handler)
 		if err != nil {
 			return err
 		}
