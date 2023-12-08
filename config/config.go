@@ -30,7 +30,8 @@ type DatabaseConfig struct {
 
 type KafkaConfig struct {
 	Brokers []string
-	Topic   string
+	Topics  []string
+	GroupID string
 }
 
 type configValidator func(*Config) error
