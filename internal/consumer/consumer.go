@@ -1,16 +1,18 @@
 package consumer
 
 import (
+	"context"
 	"github.com/IBM/sarama"
-	config "github.com/jacksonbarreto/sadi/config"
+	"github.com/jacksonbarreto/sadi/config"
 )
 
 type Consumer struct {
-	consumerGroup sarama.ConsumerGroup
-	topics        []string
+	consumerGroup        sarama.ConsumerGroup
+	topics               []string
+	consumerGroupHandler sarama.ConsumerGroupHandler
 }
 
-func NewConsumer(brokers []string, group string, topics []string) (*Consumer, error) {
+func NewConsumer(brokers []string, group string, topics []string, consumerHandler sarama.ConsumerGroupHandler) (*Consumer, error) {
 	configConsumerGroup := sarama.NewConfig()
 	configConsumerGroup.Version = sarama.V2_0_0_0
 	configConsumerGroup.Consumer.Return.Errors = true
@@ -21,20 +23,20 @@ func NewConsumer(brokers []string, group string, topics []string) (*Consumer, er
 		return nil, err
 	}
 
-	return &Consumer{consumerGroup: consumer, topics: topics}, nil
+	return &Consumer{consumerGroup: consumer, topics: topics, consumerGroupHandler: consumerHandler}, nil
 }
 
-func NewConsumerDefault() (*Consumer, error) {
+func NewConsumerDefault(processorMap ProcessorMap) (*Consumer, error) {
 	kafkaConfig := config.Kafka()
 	brokerList := kafkaConfig.Brokers
 	groupID := kafkaConfig.GroupID
 	topics := kafkaConfig.Topics
-
-	return NewConsumer(brokerList, groupID, topics)
+	consumerHandler := NewMappingCoordinator(processorMap)
+	return NewConsumer(brokerList, groupID, topics, consumerHandler)
 }
 
 func (c *Consumer) Consume() error {
-	handler := &ConsumerGroupHandler{}
+	handler := c.consumerGroupHandler
 	ctx := context.Background()
 
 	for {
