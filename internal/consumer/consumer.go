@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/IBM/sarama"
 	"github.com/jacksonbarreto/sadi/config"
+	"log"
 )
 
 type Consumer struct {
@@ -20,6 +21,7 @@ func NewConsumer(brokers []string, group string, topics []string, consumerHandle
 
 	consumer, err := sarama.NewConsumerGroup(brokers, group, configConsumerGroup)
 	if err != nil {
+		log.Printf("Error creating consumer group client: %v", err)
 		return nil, err
 	}
 
@@ -42,6 +44,7 @@ func (c *Consumer) Consume() error {
 	for {
 		err := c.consumerGroup.Consume(ctx, c.topics, handler)
 		if err != nil {
+			log.Printf("Error from consumer: %v", err)
 			return err
 		}
 	}
