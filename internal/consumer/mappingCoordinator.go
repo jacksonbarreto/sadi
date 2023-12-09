@@ -6,16 +6,6 @@ import (
 	"log"
 )
 
-type KafkaMessage struct {
-	Type    string `json:"type"`
-	Payload string `json:"payload"`
-}
-type ProcessorMap map[string]Processor
-
-type Processor interface {
-	Process(payload string)
-}
-
 type MappingCoordinator struct {
 	processors ProcessorMap
 }
@@ -44,7 +34,12 @@ func (m *MappingCoordinator) ConsumeClaim(session sarama.ConsumerGroupSession, c
 
 		if processor, exists := m.processors[kafkaMessage.Type]; exists {
 			go func(originalMsg *sarama.ConsumerMessage, kafkaMsg KafkaMessage) {
-				processor.Process(kafkaMsg.Payload)
+				err := processor.Process(kafkaMsg.Payload)
+				if err != nil {
+					log.Printf("Error processing message: %v", err)
+					// TODO: Send a message to topic "error-queue" with the message
+					return
+				}
 				session.MarkMessage(originalMsg, "")
 			}(message, kafkaMessage)
 		} else {
